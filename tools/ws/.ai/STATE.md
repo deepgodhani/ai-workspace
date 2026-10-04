@@ -8,6 +8,12 @@
 - Kiro shell policy hardened: chained / redirected / substituted commands are
   denied unless every segment matches `--allow`.
 - `bin/ws` and `bin/orch` in the workspace root call `build/ws`.
+- Published 2026-10-04: exported to github.com/deepgodhani/ai-workspace
+  (commit 0074490). A fresh copy of the export builds `ws`, passes 34/34 ws
+  tests and 18/18 `bin/selftest` (which now builds `ws`).
+- Continuity verified: a fresh Claude session and a fresh Kiro session started
+  at `~/Workspace` each found the build/test commands and this next action on
+  their own (root AGENTS.md → tools/ws/AGENTS.md → .ai/STATE.md).
 
 ## Exact next action
 
