@@ -23,6 +23,8 @@ one application or Git repository.
 - Durable verified knowledge: `knowledge/`
 - Shared skills/templates: `_shared/`
 - Local infrastructure: `tools/`
+- Workspace CLI `ws` (C++; `bin/ws`, `bin/orch`): `tools/ws` — read
+  `tools/ws/AGENTS.md`; build with `make -C tools/ws`
 - Parallel worktrees: `worktrees/`
 
 ## Root execution and Git

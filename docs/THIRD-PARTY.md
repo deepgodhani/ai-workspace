@@ -13,6 +13,9 @@ only to the files in this repository.
 | Trafilatura | Apache-2.0 | Article text extraction | `pip`/`uv` install |
 | httpx | BSD-3-Clause | HTTP client | `pip`/`uv` install |
 | beautifulsoup4, markdownify, PyYAML | MIT | HTML parsing, Markdown conversion, YAML | `pip`/`uv` install |
+| nlohmann/json 3.11.3 | MIT | JSON in `ws` (C++ header) | Downloaded by `make -C tools/ws` into `tools/ws/build/` (git-ignored), SHA-256 checked against the release notes |
+| SQLite | Public domain | `ws orch` session registry | System library (macOS built-in; `libsqlite3-dev` on Linux) |
+| Anthropic sandbox-runtime (`srt`) 0.0.78 | Apache-2.0 | OS sandbox for Kiro (and optional for Claude) children in `ws orch` | `npx` at run time, or `srt` on PATH |
 | tokscale | MIT | Read-only token usage from local CLI logs (`bin/token-usage`, `bin/session-report`) | `npx` at run time; never submits data |
 | Claude Code, Kiro, Codex CLI, Gemini CLI | Their vendors' terms | The AI CLIs this workspace is designed for | Installed by you from each vendor |
 | Firecrawl (optional) | Hosted service | Optional fallback for web research via `bin/firecrawl-mcp-wrapper` | Your own account and API key |

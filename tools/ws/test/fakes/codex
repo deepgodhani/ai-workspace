@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+// Fake Codex CLI for tests: JSONL events on stdout, last message written to -o FILE.
+import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
+const args = process.argv.slice(2);
+const prompt = readFileSync(0, "utf8");
+if (process.env.FAKE_LOG) appendFileSync(process.env.FAKE_LOG, JSON.stringify({ cwd: process.cwd(), args, prompt }) + "\n");
+const flag = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
+const thread = args[1] === "resume" ? args[args.length - 2] : "thread-fake-1";
+console.log(JSON.stringify({ type: "thread.started", thread_id: thread }));
+console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 500, cached_input_tokens: 400, output_tokens: 30 } }));
+writeFileSync(flag("-o"), JSON.stringify({ status: "partial", summary: "fake codex", files_changed: [], decisions: ["d1"], checks: [], open_issues: ["o1"], next_action: "continue" }));

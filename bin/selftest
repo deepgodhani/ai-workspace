@@ -9,7 +9,7 @@ trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/home"
 rsync -a --exclude .git --exclude projects --exclude 'research/topics' --exclude knowledge \
   --exclude temp-sessions --exclude worktrees --exclude 'tools/local-research/.venv' \
-  --exclude 'tools/local-research/work' "$src/" "$tmp/ws/"
+  --exclude 'tools/local-research/work' --exclude 'tools/ws/build' --exclude '.orch' "$src/" "$tmp/ws/"
 mkdir -p "$tmp/ws/projects" "$tmp/ws/research/topics" "$tmp/ws/knowledge"
 cd "$tmp/ws" || exit 1
 export HOME="$tmp/home"
@@ -34,6 +34,11 @@ t "root contract under 4 KB"                test "$(wc -c < AGENTS.md)" -lt 4096
 t "CLAUDE.md imports AGENTS.md"             grep -q '@AGENTS.md' CLAUDE.md
 t "Kiro agent configs present"              test -f .kiro/agents/repo-auditor.md
 t "workspace-doctor runs"                   bin/workspace-doctor
+if command -v make >/dev/null && command -v c++ >/dev/null; then
+  t "ws builds from source"                  make -s -C tools/ws
+  t "ws runs"                                bin/ws version
+  t "orch dry run builds a context packet"   bin/orch spawn projects/selftest-app --task "selftest" --dry-run
+fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 exit "$fail"

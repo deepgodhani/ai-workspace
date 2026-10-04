@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+// Fake Claude Code for tests: echoes args, optionally edits a file, prints `-p --output-format json` shape.
+import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
+const args = process.argv.slice(2);
+const prompt = readFileSync(0, "utf8");
+if (process.env.FAKE_LOG) appendFileSync(process.env.FAKE_LOG, JSON.stringify({ cwd: process.cwd(), args, prompt }) + "\n");
+const flag = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
+const sid = flag("--session-id") ?? flag("--resume") ?? "none";
+if (process.env.FAKE_MODE === "error") { console.log(JSON.stringify({ type: "result", subtype: "error_max_budget_usd", is_error: true, result: "budget exceeded", session_id: sid })); process.exit(1); }
+const editing = args.includes("acceptEdits");
+if (editing) writeFileSync("FAKE_EDIT.txt", "changed by fake claude\n");
+const result = {
+  status: "done",
+  summary: `fake run in ${process.cwd()}`,
+  files_changed: editing ? [{ path: "FAKE_EDIT.txt", change: "created" }] : [],
+  decisions: [], checks: [{ command: "none", result: "not_run" }], open_issues: [], next_action: "nothing",
+};
+const out = { type: "result", subtype: "success", is_error: false, session_id: sid, total_cost_usd: 0.0123,
+  usage: { input_tokens: 10, cache_creation_input_tokens: 100, cache_read_input_tokens: 1000, output_tokens: 50 } };
+if (process.env.FAKE_MODE === "text") out.result = "Here you go:\n```json\n" + JSON.stringify(result) + "\n```";
+else { out.structured_output = result; out.result = ""; }
+console.log(JSON.stringify(out));

@@ -30,6 +30,7 @@ SKIP_PATHS = {
     "_shared/skills/workspace-coach/references/verification-agent-workflow.md",
     "tools/local-research/work",
     "tools/local-research/tests/output",
+    "tools/ws/build",
 }
 TEXT_SUFFIXES = {".md", ".sh", ".py", ".yml", ".yaml", ".json", ".toml", ".txt", ".js", ".ts", ""}
 

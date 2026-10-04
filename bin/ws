@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Workspace command-line tool (C++). Build once with: make -C tools/ws
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+bin="$root/tools/ws/build/ws"
+if [[ ! -x "$bin" ]]; then
+  echo "ws is not built yet. Run: make -C \"$root/tools/ws\"" >&2
+  exit 127
+fi
+exec "$bin" "$@"

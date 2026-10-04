@@ -28,7 +28,8 @@ and how to reproduce them.
 | `agents/` | Reusable agents; `repo-auditor` and `pipeline-triage` included |
 | `_shared/` | Skills, templates, prompts shared by every CLI |
 | `tools/local-research/` | Local web research stack (SearXNG, Crawl4AI, Trafilatura, Playwright) |
-| `bin/` | Helper scripts |
+| `tools/ws/` | `ws`, the workspace CLI (C++20): `ws orch` runs scoped Claude Code / Codex / Kiro child sessions |
+| `bin/` | Helper scripts (`bin/ws`, `bin/orch` call the built `ws`) |
 | `.kiro/` | Kiro custom agents and skill links |
 
 ## Quick start
@@ -36,6 +37,7 @@ and how to reproduce them.
 ```bash
 git clone <this-repo> ~/Workspace && cd ~/Workspace
 bin/link-skills            # link _shared/skills into Claude Code, Codex, Kiro
+make -C tools/ws           # build ws (C++20 compiler, SQLite, curl for the first build)
 bin/workspace-doctor       # check tools and structure
 bin/new-project my-app     # or: bin/new-research my-topic https://docs.example.com
 ```
@@ -50,13 +52,14 @@ credit-free web research.
 
 | Command | What it does |
 |---|---|
+| `bin/orch spawn <target> --task "…"` | Start a scoped, sandboxed Claude Code / Codex / Kiro child session with a compact context packet; `resume`, `merge` results across CLIs, `list`, `diff`, `close` (see `tools/ws/README.md`) |
 | `bin/new-project <name>` | Create a project with `.ai/STATE.md`, `TASKS.md`, `INDEX.md`, `DECISIONS.md` |
 | `bin/new-research <topic> [url]` | Create a research pack with scope, coverage, sources, report, gaps |
 | `bin/new-agent-case <agent> <case>` | Create a case for a template-driven agent |
 | `bin/workspace-context <target>` | Print a target's instructions, startup files and Git owner, without contents |
 | `bin/token-usage` | Local token/cost summary across Claude Code, Codex, Gemini, Kiro (via tokscale; read-only) |
 | `bin/session-report` | Does context per turn grow with session length? (local logs, read-only) |
-| `bin/selftest` | End-to-end check on a throwaway copy (15 checks) |
+| `bin/selftest` | End-to-end check on a throwaway copy (18 checks, including building `ws`) |
 | `bin/link-skills` | Link shared skills into each CLI |
 | `bin/workspace-doctor` | Health check |
 | `bin/export-oss` | Publish your own sanitized copy of the framework (see below) |
