@@ -2,8 +2,8 @@
 
 ## Next (phase 3, in order)
 
-- [ ] `ws context <target>` ← bin/workspace-context
-- [ ] `ws new project|research|agent-case` ← bin/new-project, new-research, new-agent-case
+- [x] `ws context <target>` ← bin/workspace-context. 2026-10-04.
+- [x] `ws new project|research|agent-case` ← bin/new-project, new-research, new-agent-case. 2026-10-04.
 - [ ] `ws link-skills` ← bin/link-skills
 - [ ] `ws doctor` ← bin/workspace-doctor
 - [ ] `ws selftest` ← bin/selftest

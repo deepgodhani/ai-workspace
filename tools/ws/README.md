@@ -11,6 +11,12 @@ make test       # end-to-end tests with fake claude/codex/kiro/srt (needs Node o
 
 ## Commands
 
+- `ws context <target>` — resolve a target (path or bare name) and print its type,
+  Git state, AGENTS.md chain, and startup-context sizes. `bin/workspace-context`
+  calls it.
+- `ws new project|research|agent-case …` — scaffold from `_shared/templates/…` or
+  `agents/<agent>/cases/_template` and fill placeholders. `bin/new-project`,
+  `bin/new-research`, `bin/new-agent-case` call it.
 - `ws orch …` — scoped AI CLI child sessions for Claude Code, Codex, and Kiro:
   spawn (read-only or `--write` in a Git worktree), resume, merge results across
   CLIs, list/show/diff/close. Sandboxed by default (`--sandbox auto`: Claude/Codex

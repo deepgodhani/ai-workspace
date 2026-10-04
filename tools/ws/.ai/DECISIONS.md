@@ -8,3 +8,7 @@
   spec; Node is a dev-only dependency for the runner.
 - 2026-10-04 — **Shell allow-list matches every chained segment**; substitution
   and redirection always denied (found by a real Kiro run).
+- 2026-10-04 — **Ports keep output and exit codes, but fix accidental side
+  effects.** `ws new agent-case` keeps template file modes; the bash script left
+  every substituted text file at 0600 (mktemp + mv). Usage lines say `ws <sub>`
+  instead of `$0`; `-h/--help` added. A missing `git` is tolerated as before.

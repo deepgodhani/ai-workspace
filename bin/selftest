@@ -19,6 +19,9 @@ t() { local name="$1"; shift
   if "$@" >/dev/null 2>&1; then printf 'PASS  %s\n' "$name"; pass=$((pass+1))
   else printf 'FAIL  %s\n' "$name"; fail=$((fail+1)); fi; }
 
+# Build ws first: the bin/ tools are wrappers around it.
+t "ws builds from source"                   make -s -C tools/ws
+t "ws runs"                                 bin/ws version
 t "link-skills into Claude/Codex/Kiro"      bin/link-skills
 t "Claude skill links resolve"              test -f "$HOME/.claude/skills/workspace-coach/SKILL.md"
 t "Codex skill links resolve"               test -f "$HOME/.agents/skills/workspace-coach/SKILL.md"
@@ -34,11 +37,7 @@ t "root contract under 4 KB"                test "$(wc -c < AGENTS.md)" -lt 4096
 t "CLAUDE.md imports AGENTS.md"             grep -q '@AGENTS.md' CLAUDE.md
 t "Kiro agent configs present"              test -f .kiro/agents/repo-auditor.md
 t "workspace-doctor runs"                   bin/workspace-doctor
-if command -v make >/dev/null && command -v c++ >/dev/null; then
-  t "ws builds from source"                  make -s -C tools/ws
-  t "ws runs"                                bin/ws version
-  t "orch dry run builds a context packet"   bin/orch spawn projects/selftest-app --task "selftest" --dry-run
-fi
+t "orch dry run builds a context packet"    bin/orch spawn projects/selftest-app --task "selftest" --dry-run
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 exit "$fail"

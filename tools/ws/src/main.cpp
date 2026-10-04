@@ -12,6 +12,8 @@ namespace {
 
 const char* USAGE = R"(ws — AI Workspace command-line tool
 
+  ws context <target>      target type, Git state, instructions, startup context sizes
+  ws new <kind> …          scaffold a project, research topic, or agent case from its template
   ws orch <command> …      scoped AI CLI child sessions (spawn, resume, merge, list, show, diff, close)
   ws version
 
@@ -27,6 +29,8 @@ int main(int argc, char** argv) {
     return 0;
   }
   const std::map<std::string, int (*)(const std::vector<std::string>&)> commands = {
+      {"context", ws::cmd_context},
+      {"new", ws::cmd_new},
       {"orch", ws::cmd_orch},
       {"version", ws::cmd_version},
   };
