@@ -1,0 +1,31 @@
+# Personal work stays local; only the framework is tracked.
+projects/*
+!projects/README.md
+research/topics/*
+!research/topics/.gitkeep
+knowledge/*
+!knowledge/README.md
+temp-sessions/*
+!temp-sessions/README.md
+worktrees/*
+!worktrees/.gitkeep
+agents/*/cases/*
+!agents/*/cases/_template/
+
+# Local state and secrets
+.env
+.env.*
+!.env.example
+.oss-denylist
+.claude/settings.local.json
+.kiro/settings/
+tools/local-research/.venv/
+tools/local-research/work/
+tools/local-research/tests/output/
+
+# OS / build noise
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/

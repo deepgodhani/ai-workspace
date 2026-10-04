@@ -1,0 +1,39 @@
+tiers:
+  A:
+    label: Primary authority
+    score: 50
+    description: Official documentation, standards, government sources, official repositories, research papers, and direct experiments.
+  B:
+    label: Strong first-party evidence
+    score: 38
+    description: Official engineering blogs, release notes, maintainer discussions, and architecture guides.
+  C:
+    label: Reliable independent evidence
+    score: 24
+    description: Reputable technical publications and evidence-rich engineering case studies.
+  D:
+    label: Discovery only
+    score: 10
+    description: General blogs, forums, Q&A, social sites, and aggregators.
+  E:
+    label: Weak or promotional
+    score: 0
+    description: SEO pages, affiliate pages, unsourced claims, and marketing-only pages.
+
+scoring:
+  relevance_max: 30
+  freshness_max: 10
+  directness_max: 8
+  version_match_max: 7
+  duplication_penalty: 30
+  promotional_penalty: 20
+
+promotional_markers:
+  - best tools
+  - top 10
+  - pricing
+  - buy now
+  - affiliate
+  - sponsored
+  - alternatives to
+

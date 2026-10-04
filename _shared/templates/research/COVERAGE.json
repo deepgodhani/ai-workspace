@@ -1,0 +1,14 @@
+{
+  "root": "{{ROOT_URL}}",
+  "topic": "{{TOPIC}}",
+  "version": null,
+  "last_updated": "{{DATE}}",
+  "counts": {
+    "discovered": 0,
+    "in_scope": 0,
+    "processed": 0,
+    "failed": 0,
+    "excluded": 0
+  },
+  "urls": []
+}

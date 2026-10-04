@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+tool_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$tool_root"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$tool_root/work/uv-cache}"
+export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-$tool_root/work/uv-python}"
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$tool_root/work/ms-playwright}"
+export LOCAL_RESEARCH_WORK_DIR="${LOCAL_RESEARCH_WORK_DIR:-$tool_root/work}"
+export CRAWL4_AI_BASE_DIRECTORY="${CRAWL4_AI_BASE_DIRECTORY:-$tool_root/work}"
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "uv is required. Install it from https://docs.astral.sh/uv/." >&2
+  exit 1
+fi
+
+uv sync --extra crawler --extra dev
+if find "$PLAYWRIGHT_BROWSERS_PATH" -maxdepth 1 -type d -name 'chromium-*' -print -quit 2>/dev/null | grep -q .; then
+  echo "Playwright Chromium is already installed."
+else
+  uv run crawl4ai-setup
+fi
+
+searxng_repo="$tool_root/work/searxng-src"
+searxng_venv="$tool_root/work/searxng-venv"
+searxng_revision="$(tr -d '[:space:]' < "$tool_root/config/searxng-version.txt")"
+
+if [[ ! -d "$searxng_repo/.git" ]]; then
+  git clone --filter=blob:none --no-checkout https://github.com/searxng/searxng.git "$searxng_repo"
+fi
+if [[ "$(git -C "$searxng_repo" rev-parse HEAD 2>/dev/null || true)" != "$searxng_revision" ]]; then
+  git -C "$searxng_repo" fetch --depth 1 origin "$searxng_revision"
+  git -C "$searxng_repo" checkout --detach "$searxng_revision"
+fi
+
+uv venv --allow-existing --python 3.12 "$searxng_venv"
+uv pip install --python "$searxng_venv/bin/python" -r "$searxng_repo/requirements.txt"
+uv pip install --python "$searxng_venv/bin/python" setuptools wheel
+uv pip install --python "$searxng_venv/bin/python" --no-build-isolation "$searxng_repo"
+
+echo "Local SearXNG, Crawl4AI, Playwright, and Chromium are ready."

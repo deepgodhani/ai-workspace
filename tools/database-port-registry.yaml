@@ -1,0 +1,9 @@
+schema_version: '1.0'
+scope: local_database_endpoints
+policy:
+  bind_host: 127.0.0.1
+  notes:
+  - Entries record ownership and purpose, not whether a process is currently live.
+  - Do not reuse a port unless owner, case, role, and destination all match.
+  - Store no credentials or connection strings here.
+assignments: []

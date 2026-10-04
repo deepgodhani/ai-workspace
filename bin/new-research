@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+  echo "Usage: $0 <topic-name> [root-url]" >&2
+  exit 2
+fi
+
+topic="$1"
+root_url="${2:-}"
+slug="$(printf '%s' "$topic" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+if [[ -z "$slug" ]]; then
+  echo "Could not create a valid topic slug." >&2
+  exit 2
+fi
+
+workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+target="$workspace/research/topics/$slug"
+template="$workspace/_shared/templates/research"
+
+if [[ -e "$target" ]]; then
+  echo "Research topic already exists: $target" >&2
+  exit 1
+fi
+
+mkdir -p "$target"
+cp -a "$template/." "$target/"
+
+date_now="$(date +%F)"
+python3 - "$target" "$topic" "$root_url" "$date_now" <<'PY'
+from pathlib import Path
+import sys
+root, topic, url, date = Path(sys.argv[1]), sys.argv[2], sys.argv[3], sys.argv[4]
+for p in root.rglob("*"):
+    if p.is_file():
+        try:
+            text = p.read_text()
+        except UnicodeDecodeError:
+            continue
+        text = (text.replace("{{TOPIC}}", topic)
+                    .replace("{{ROOT_URL}}", url)
+                    .replace("{{DATE}}", date))
+        p.write_text(text)
+PY
+
+printf 'Created research topic: %s\n' "$target"
+printf 'Next from your workspace-root session:\n'
+printf '  $workspace-coach activate research/topics/%s and review its scope\n' "$slug"

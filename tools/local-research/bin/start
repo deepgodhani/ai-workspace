@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+tool_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$tool_root"
+mode="${1:---auto}"
+
+if [[ ! -f .env ]]; then
+  secret="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+  printf 'SEARXNG_SECRET=%s\nSEARXNG_PORT=8888\nCRAWL4AI_PORT=11235\n' "$secret" > .env
+  chmod 600 .env
+fi
+set -a
+source .env
+set +a
+
+start_containers() {
+  if command -v docker >/dev/null 2>&1; then
+    docker compose up -d
+    return
+  fi
+  if command -v podman >/dev/null 2>&1 && podman compose version >/dev/null 2>&1; then
+    if ! podman info >/dev/null 2>&1 && ! podman machine start; then
+      return 1
+    fi
+    podman compose up -d
+    return
+  fi
+  return 1
+}
+
+start_native() {
+  local native_runner="$tool_root/work/searxng-venv/bin/searxng-run"
+  local pid_file="$tool_root/work/searxng-native.pid"
+  local log_file="$tool_root/work/searxng-native.log"
+  if [[ ! -x "$native_runner" ]]; then
+    echo "Native SearXNG is not installed. Run ./bin/setup first." >&2
+    return 1
+  fi
+  if curl --fail --silent --max-time 2 "http://127.0.0.1:${SEARXNG_PORT}/config" >/dev/null 2>&1; then
+    echo "SearXNG is already running at http://127.0.0.1:${SEARXNG_PORT}"
+    return
+  fi
+  export SEARXNG_SETTINGS_PATH="$tool_root/config/searxng/settings.yml"
+  export SEARXNG_SECRET
+  export SEARXNG_BIND_ADDRESS="127.0.0.1"
+  export SEARXNG_PORT="${SEARXNG_PORT:-8888}"
+  nohup "$native_runner" >>"$log_file" 2>&1 &
+  local native_pid=$!
+  printf '%s\n' "$native_pid" > "$pid_file"
+  for attempt in {1..50}; do
+    if curl --fail --silent --max-time 2 "http://127.0.0.1:${SEARXNG_PORT}/config" >/dev/null 2>&1; then
+      echo "Native SearXNG started (pid $native_pid)."
+      return
+    fi
+    sleep 0.2
+  done
+  echo "Native SearXNG did not become ready. See $log_file" >&2
+  return 1
+}
+
+case "$mode" in
+  --containers)
+    start_containers
+    ;;
+  --native)
+    start_native
+    ;;
+  --auto)
+    if ! start_containers; then
+      echo "Container runtime unavailable; using native SearXNG and Python crawling."
+      start_native
+    fi
+    ;;
+  *)
+    echo "Usage: ./bin/start [--auto|--native|--containers]" >&2
+    exit 2
+    ;;
+esac
+
+echo "SearXNG:             http://127.0.0.1:${SEARXNG_PORT}"
+if curl --fail --silent --max-time 2 "http://127.0.0.1:${CRAWL4AI_PORT}/health" >/dev/null 2>&1; then
+  echo "Crawl4AI playground: http://127.0.0.1:${CRAWL4AI_PORT}/playground"
+else
+  echo "Crawl4AI:            local Python library (web playground requires container mode)"
+fi
+echo "Run ./bin/status to verify the active mode."

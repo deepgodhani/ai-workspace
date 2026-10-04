@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+tool_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$tool_root"
+stopped=0
+
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  docker compose down
+  stopped=1
+elif command -v podman >/dev/null 2>&1 && podman info >/dev/null 2>&1 && podman compose version >/dev/null 2>&1; then
+  podman compose down
+  stopped=1
+fi
+
+pid_file="$tool_root/work/searxng-native.pid"
+if [[ -f "$pid_file" ]]; then
+  native_pid="$(tr -d '[:space:]' < "$pid_file")"
+  if [[ "$native_pid" =~ ^[0-9]+$ ]] && kill -0 "$native_pid" >/dev/null 2>&1; then
+    kill "$native_pid"
+    stopped=1
+    echo "Stopped native SearXNG (pid $native_pid)."
+  fi
+  rm -f "$pid_file"
+fi
+
+if [[ "$stopped" -eq 0 ]]; then
+  echo "No running local-research services were found."
+fi

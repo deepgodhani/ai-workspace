@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $0 <project-name>" >&2
+  exit 2
+fi
+
+name="$1"
+if [[ ! "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+  echo "Use letters, numbers, dots, underscores, or hyphens; start with a letter or number." >&2
+  exit 2
+fi
+
+workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+target="$workspace/projects/$name"
+template="$workspace/_shared/templates/project"
+
+if [[ -e "$target" ]]; then
+  echo "Project already exists: $target" >&2
+  exit 1
+fi
+
+mkdir -p "$target"
+cp -a "$template/." "$target/"
+python3 - "$target/AGENTS.md" "$name" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+p.write_text(p.read_text().replace("{{PROJECT_NAME}}", sys.argv[2]))
+PY
+
+cat > "$target/README.md" <<README
+# $name
+
+Describe the project, setup, commands, architecture, and usage here.
+README
+
+if command -v git >/dev/null 2>&1; then
+  git -C "$target" init -q
+fi
+
+printf 'Created project: %s\n' "$target"
+printf 'Next from your workspace-root session:\n'
+printf '  $workspace-coach activate projects/%s, initialize its state, and continue\n' "$name"

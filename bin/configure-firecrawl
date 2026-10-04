@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+wrapper="$workspace/bin/firecrawl-mcp-wrapper"
+
+if ! command -v npx >/dev/null 2>&1; then
+  echo "npx is required for the local Firecrawl MCP server." >&2
+  exit 1
+fi
+
+has_client=0
+command -v codex >/dev/null 2>&1 && has_client=1
+command -v claude >/dev/null 2>&1 && has_client=1
+if [[ "$has_client" -eq 0 ]]; then
+  echo "Install Codex or Claude Code before configuring Firecrawl." >&2
+  exit 1
+fi
+
+if [[ -n "${FIRECRAWL_API_KEY:-}" ]]; then
+  key="$FIRECRAWL_API_KEY"
+else
+  read -r -s -p "Firecrawl API key: " key
+  printf '\n'
+fi
+
+if [[ -z "$key" ]]; then
+  echo "No API key provided." >&2
+  exit 2
+fi
+
+secret_dir="${XDG_CONFIG_HOME:-$HOME/.config}/ai-workspace"
+secret_file="$secret_dir/firecrawl.env"
+mkdir -p "$secret_dir"
+chmod 700 "$secret_dir"
+printf 'export FIRECRAWL_API_KEY=%q\n' "$key" > "$secret_file"
+chmod 600 "$secret_file"
+unset key
+
+echo "Credential saved locally with mode 600: $secret_file"
+
+configured=0
+if command -v codex >/dev/null 2>&1; then
+  echo "Configuring Firecrawl MCP for Codex..."
+  if codex mcp add firecrawl -- "$wrapper"; then
+    configured=$((configured + 1))
+  else
+    echo "Codex configuration failed. It may already have a server named firecrawl." >&2
+  fi
+else
+  echo "skip Codex: command not installed"
+fi
+
+if command -v claude >/dev/null 2>&1; then
+  echo "Configuring Firecrawl MCP for Claude Code..."
+  if claude mcp add firecrawl -- "$wrapper"; then
+    configured=$((configured + 1))
+  else
+    echo "Claude configuration failed. It may already have a server named firecrawl." >&2
+  fi
+else
+  echo "skip Claude Code: command not installed"
+fi
+
+if [[ "$configured" -eq 0 ]]; then
+  echo "No clients were configured. The credential file was created but no MCP entry was added." >&2
+  exit 1
+fi
+
+echo "Done. Restart each CLI and use /mcp to verify Firecrawl."

@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+*.local
+.ai/tmp/
+.ai/cache/

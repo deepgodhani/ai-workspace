@@ -1,0 +1,40 @@
+name: local-research
+
+services:
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    container_name: local-research-searxng
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SEARXNG_PORT:-8888}:8080"
+    environment:
+      SEARXNG_BASE_URL: "http://localhost:${SEARXNG_PORT:-8888}/"
+      SEARXNG_SECRET: "${SEARXNG_SECRET}"
+      FORCE_OWNERSHIP: "false"
+    volumes:
+      - ./config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - searxng-cache:/var/cache/searxng
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/config >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  crawl4ai:
+    image: docker.io/unclecode/crawl4ai:0.8.5
+    container_name: local-research-crawl4ai
+    restart: unless-stopped
+    shm_size: 1gb
+    ports:
+      - "127.0.0.1:${CRAWL4AI_PORT:-11235}:11235"
+    environment:
+      CRAWL4AI_HOOKS_ENABLED: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:11235/health', timeout=5)\" || exit 1"]
+      interval: 15s
+      timeout: 8s
+      retries: 20
+
+volumes:
+  searxng-cache:
+

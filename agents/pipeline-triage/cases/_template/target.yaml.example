@@ -1,0 +1,15 @@
+# Copy to target.yaml and fill in. Never commit credentials here.
+
+case_name: "{{CASE_NAME}}"
+
+system:
+  description: ""          # what this job/pipeline is and what it does
+  platform: ""              # e.g. Airflow, cron, GCP Cloud Function, dbt Cloud, CI
+  owning_project: ""        # path under projects/, or external, if any
+
+evidence_sources:
+  logs: ""                  # where to fetch logs from (console/CLI command, not raw secrets)
+  recent_changes: ""        # where to check recent deploys/config/schema diffs
+  how_to_fetch: ""          # exact command(s) to pull evidence, redaction already applied
+
+notes: ""

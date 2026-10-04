@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -u
+tool_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$tool_root"
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$tool_root/work/ms-playwright}"
+export CRAWL4_AI_BASE_DIRECTORY="${CRAWL4_AI_BASE_DIRECTORY:-$tool_root/work}"
+if [[ -f .env ]]; then
+  set -a
+  source .env
+  set +a
+fi
+failed=0
+
+check_url() {
+  local label="$1"
+  local url="$2"
+  if curl --fail --silent --show-error --max-time 5 "$url" >/dev/null 2>&1; then
+    printf 'ok      %-12s %s\n' "$label" "$url"
+  else
+    printf 'missing %-12s %s\n' "$label" "$url"
+    failed=1
+  fi
+}
+
+check_url "SearXNG" "${SEARXNG_URL:-http://127.0.0.1:${SEARXNG_PORT:-8888}}/config"
+
+if curl --fail --silent --show-error --max-time 5 "${CRAWL4AI_URL:-http://127.0.0.1:${CRAWL4AI_PORT:-11235}}/health" >/dev/null 2>&1; then
+  printf 'ok      %-12s %s\n' "Crawl4AI UI" "${CRAWL4AI_URL:-http://127.0.0.1:${CRAWL4AI_PORT:-11235}}"
+else
+  printf 'optional %-12s %s\n' "Crawl4AI UI" "container mode is not running"
+fi
+
+if [[ -x .venv/bin/python ]] && .venv/bin/python -c 'import crawl4ai, playwright' >/dev/null 2>&1; then
+  echo "ok      Crawler      Crawl4AI and Playwright import"
+else
+  echo "missing Crawler      run ./bin/setup"
+  failed=1
+fi
+
+if find "$PLAYWRIGHT_BROWSERS_PATH" -maxdepth 1 -type d -name 'chromium-*' -print -quit 2>/dev/null | grep -q .; then
+  echo "ok      Chromium     local browser installed"
+else
+  echo "missing Chromium     run ./bin/setup"
+  failed=1
+fi
+
+exit "$failed"

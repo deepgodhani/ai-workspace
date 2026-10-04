@@ -1,0 +1,33 @@
+use_default_settings:
+  engines:
+    keep_only:
+      - duckduckgo
+      - google cse
+
+general:
+  debug: false
+  instance_name: "Local Research Search"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "local-development-placeholder"
+  limiter: false
+  image_proxy: true
+
+outgoing:
+  request_timeout: 8.0
+  max_request_timeout: 15.0
+  pool_connections: 50
+  pool_maxsize: 10

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+tool_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$tool_root/work/uv-cache}"
+export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-$tool_root/work/uv-python}"
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$tool_root/work/ms-playwright}"
+export LOCAL_RESEARCH_WORK_DIR="${LOCAL_RESEARCH_WORK_DIR:-$tool_root/work}"
+export CRAWL4_AI_BASE_DIRECTORY="${CRAWL4_AI_BASE_DIRECTORY:-$tool_root/work}"
+if [[ -f "$tool_root/.env" ]]; then
+  set -a
+  source "$tool_root/.env"
+  set +a
+fi
+export SEARXNG_URL="${SEARXNG_URL:-http://127.0.0.1:${SEARXNG_PORT:-8888}}"
+exec uv run --project "$tool_root" local-research "$@"

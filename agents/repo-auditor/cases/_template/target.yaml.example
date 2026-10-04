@@ -1,0 +1,21 @@
+# Copy to target.yaml and fill in. Never commit credentials here.
+
+case_name: "{{CASE_NAME}}"
+
+repo:
+  # Local path (preferred for anything inside ~/Workspace) or a remote URL.
+  path: ""
+  remote: ""
+  default_branch: "main"
+
+# Primary language(s)/stack — fill in after the first run's detection pass,
+# don't guess ahead of time.
+stack: []
+
+scope:
+  include: []   # paths to audit; empty = whole repo
+  exclude: []   # paths to skip (generated code, vendored deps, etc.)
+
+owning_agents_md: ""   # path to the repo's own AGENTS.md, if it has one
+
+notes: ""

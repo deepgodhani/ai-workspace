@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# End-to-end check of the framework on a throwaway copy with an isolated HOME.
+# Touches nothing outside a temp directory. Exit code = number of failures.
+set -uo pipefail
+
+src="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+mkdir -p "$tmp/home"
+rsync -a --exclude .git --exclude projects --exclude 'research/topics' --exclude knowledge \
+  --exclude temp-sessions --exclude worktrees --exclude 'tools/local-research/.venv' \
+  --exclude 'tools/local-research/work' "$src/" "$tmp/ws/"
+mkdir -p "$tmp/ws/projects" "$tmp/ws/research/topics" "$tmp/ws/knowledge"
+cd "$tmp/ws" || exit 1
+export HOME="$tmp/home"
+
+pass=0 fail=0
+t() { local name="$1"; shift
+  if "$@" >/dev/null 2>&1; then printf 'PASS  %s\n' "$name"; pass=$((pass+1))
+  else printf 'FAIL  %s\n' "$name"; fail=$((fail+1)); fi; }
+
+t "link-skills into Claude/Codex/Kiro"      bin/link-skills
+t "Claude skill links resolve"              test -f "$HOME/.claude/skills/workspace-coach/SKILL.md"
+t "Codex skill links resolve"               test -f "$HOME/.agents/skills/workspace-coach/SKILL.md"
+t "Kiro skill links resolve"                test -f .kiro/skills/workspace-coach/SKILL.md
+t "new-project"                             bin/new-project selftest-app
+t "project has state files"                 test -f projects/selftest-app/.ai/STATE.md
+t "new-research"                            bin/new-research selftest-topic
+t "research topic has scope"                test -f research/topics/selftest-topic/SCOPE.md
+t "new-agent-case"                          bin/new-agent-case repo-auditor selftest-case
+t "agent case has target.yaml"              test -f agents/repo-auditor/cases/selftest-case/target.yaml
+t "workspace-context resolves a target"     bin/workspace-context projects/selftest-app
+t "root contract under 4 KB"                test "$(wc -c < AGENTS.md)" -lt 4096
+t "CLAUDE.md imports AGENTS.md"             grep -q '@AGENTS.md' CLAUDE.md
+t "Kiro agent configs present"              test -f .kiro/agents/repo-auditor.md
+t "workspace-doctor runs"                   bin/workspace-doctor
+
+printf '\n%d passed, %d failed\n' "$pass" "$fail"
+exit "$fail"

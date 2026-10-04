@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Generic case creator for template-driven reusable agents (those whose
+# agents/<agent>/cases/_template/ holds the scaffold, as opposed to coded
+# agents that ship their own case CLI).
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+  echo "Usage: $0 <agent-name> <case-name>" >&2
+  echo "Example: $0 repo-auditor my-project-audit" >&2
+  exit 2
+fi
+
+agent="$1"
+name="$2"
+
+if [[ ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+  echo "Use lowercase letters, numbers, and hyphens for the case name; start with a letter or number." >&2
+  exit 2
+fi
+
+workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+agent_dir="$workspace/agents/$agent"
+template_dir="$agent_dir/cases/_template"
+target="$agent_dir/cases/$name"
+
+if [[ ! -d "$agent_dir" ]]; then
+  echo "Agent not found: $agent_dir" >&2
+  exit 1
+fi
+if [[ ! -d "$template_dir" ]]; then
+  echo "No case template at $template_dir — this agent may use its own CLI to create cases (see its AGENTS.md)." >&2
+  exit 1
+fi
+if [[ -e "$target" ]]; then
+  echo "Case already exists: $target" >&2
+  exit 1
+fi
+
+mkdir -p "$target"
+cp -a "$template_dir/." "$target/"
+
+# Rename any file literally named *.example to its real name (e.g. target.yaml.example -> target.yaml)
+while IFS= read -r -d '' f; do
+  mv "$f" "${f%.example}"
+done < <(find "$target" -type f -name '*.example' -print0)
+
+# Substitute the {{CASE_NAME}} placeholder in every text file.
+find "$target" -type f -print0 | while IFS= read -r -d '' f; do
+  if grep -Iq . "$f" 2>/dev/null; then
+    tmp="$(mktemp)"
+    sed "s/{{CASE_NAME}}/$name/g" "$f" > "$tmp" && mv "$tmp" "$f"
+  fi
+done
+
+printf '\nCreated case: %s\n' "$target"
+printf 'Next from your workspace-root session:\n'
+printf '  1. Fill in %s/target.yaml.\n' "$target"
+printf '  2. Read %s/AGENTS.md for the procedure.\n' "$agent_dir"
+printf '  3. Activate %s with $workspace-coach and run it.\n' "$target"

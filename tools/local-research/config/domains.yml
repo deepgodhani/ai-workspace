@@ -1,0 +1,35 @@
+# Empty allow means all public HTTP(S) domains are eligible. Deny always wins.
+allow: []
+deny:
+  - localhost
+  - 127.0.0.1
+  - 0.0.0.0
+  - "*.local"
+  - "*.internal"
+
+tiers:
+  A:
+    - docs.searxng.org
+    - github.com/searxng
+    - docs.crawl4ai.com
+    - github.com/unclecode/crawl4ai
+    - cloud.google.com
+    - docs.cloud.google.com
+    - firebase.google.com
+    - mongodb.com/docs
+    - github.com/mongodb
+    - docs.python.org
+    - developer.mozilla.org
+    - w3.org
+    - ietf.org
+    - rfc-editor.org
+  B:
+    - searxng.org
+    - crawl4ai.com
+    - mongodb.com/blog
+    - cloud.google.com/blog
+  D:
+    - stackoverflow.com
+    - reddit.com
+    - medium.com
+    - dev.to

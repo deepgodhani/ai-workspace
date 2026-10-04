@@ -1,0 +1,35 @@
+[project]
+name = "local-web-research"
+version = "0.1.0"
+description = "Credit-free local web discovery, crawling, ranking, and research-pack generation"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "beautifulsoup4>=4.13,<5",
+  "httpx>=0.28,<1",
+  "markdownify>=1.1,<2",
+  "trafilatura>=2.0,<3",
+  "pyyaml>=6.0,<7",
+]
+
+[project.optional-dependencies]
+crawler = [
+  "crawl4ai>=0.8,<0.9",
+  "playwright>=1.52,<2",
+]
+dev = ["pytest>=8.4,<9"]
+
+[project.scripts]
+local-research-search = "local_research.cli:search_main"
+local-research-crawl = "local_research.cli:crawl_main"
+local-research = "local_research.cli:research_main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/local_research"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
