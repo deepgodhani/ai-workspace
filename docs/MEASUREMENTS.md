@@ -17,10 +17,34 @@ Rerun everything on your own machine with the commands at the end.
 | `workspace-context` resolves a target (exit 0) | pass |
 | Root contract under 4 KB; `CLAUDE.md` imports `AGENTS.md` | pass |
 | Kiro agent configs present; `workspace-doctor` runs | pass |
-| **Total** | **15 / 15** |
+| `ws` builds from source and runs; `orch` dry run builds a context packet | pass |
+| **Total** | **18 / 18** (2026-10-04, after the `ws` port) |
 
 The first run failed one check: `workspace-context` printed correct output but
 exited 1. The bug was fixed; this is what the self-test is for.
+
+## 1a. The `bin/` tools as one C++ binary (`ws`)
+
+On 2026-10-04 every `bin/` helper except the installers was ported to `ws`
+(`tools/ws`), and the `bin/` names became 3-line wrappers. Method per tool: the
+new black-box tests run against `ws` and, through a shim, against the original
+script; on the real workspace the outputs were compared byte for byte; the
+Python-based tools were also compared on random inputs. Full tables:
+`tools/ws/docs/MEASUREMENTS.md`.
+
+| | Before | After |
+|---|---|---|
+| End-to-end tests for `bin/` tools | 0 (only `bin/selftest`) | 71 (plus 34 for `ws orch`) |
+| Old scripts passing the new tests | – | all except deliberate changes (`tools/ws/.ai/DECISIONS.md`) |
+| `bin/` lines (wrappers + one private script kept in bash) | 952 | 95 |
+| `bin/` tools needing Python / rsync | 6 / 2 | 0 / 0 |
+| `export-oss --check` | 406 ms | 135 ms |
+| `workspace-doctor` | 16.2–16.9 s | 16.8 s (`claude mcp list` alone takes ~16 s) |
+| `token-usage`, `session-report` | ~0.7 s | ~0.7 s (`npx tokscale` dominates) |
+
+Speed only changes where a script started Python or forked many processes; the
+wrapper adds ~13–25 ms of bash start-up. Agent token spend per call is
+unchanged: the output is the same text.
 
 ## 2. Context loaded per step vs context stored
 

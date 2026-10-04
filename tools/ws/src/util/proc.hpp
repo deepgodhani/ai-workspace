@@ -24,6 +24,18 @@ struct RunOptions {
 // Run argv[0] (resolved on PATH) to completion, feeding `input` on stdin.
 RunResult run(const std::vector<std::string>& argv, const RunOptions& opts);
 
+// Run argv[0] (resolved on PATH) with this process's stdin/stdout/stderr, like a shell
+// command would; stderr goes to /dev/null when `discard_stderr`. Flush std::cout first.
+// Returns the exit status (-1 if killed by a signal); throws if the program cannot start.
+int run_inherit(const std::vector<std::string>& argv, bool discard_stderr = false, bool discard_stdout = false);
+
+// `out="$(cmd)"`: capture stdout while stderr goes to this process's stderr.
+// Throws if the program cannot start.
+RunResult run_capture_stdout(const std::vector<std::string>& argv);
+
+// Like `command -v`: the first PATH entry holding an executable regular file `name`.
+std::optional<std::string> find_on_path(const std::string& name);
+
 // Run and require exit 0; throws std::runtime_error with stderr otherwise. Returns trimmed stdout.
 std::string run_ok(const std::vector<std::string>& argv, const std::string& cwd);
 

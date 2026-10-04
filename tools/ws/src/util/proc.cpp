@@ -4,10 +4,12 @@
 #include <poll.h>
 #include <signal.h>
 #include <spawn.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <stdexcept>
 #include <thread>
@@ -160,6 +162,70 @@ RunResult run(const std::vector<std::string>& argv, const RunOptions& opts) {
     res.code = decode_status(status);
   }
   return res;
+}
+
+int run_inherit(const std::vector<std::string>& argv, bool discard_stderr, bool discard_stdout) {
+  if (argv.empty()) throw std::runtime_error("spawn: empty argv");
+  posix_spawn_file_actions_t fa;
+  posix_spawn_file_actions_init(&fa);
+  if (discard_stdout) posix_spawn_file_actions_addopen(&fa, 1, "/dev/null", O_WRONLY, 0);
+  if (discard_stderr) posix_spawn_file_actions_addopen(&fa, 2, "/dev/null", O_WRONLY, 0);
+  // main() ignores SIGPIPE; a shell's child would see the default action.
+  posix_spawnattr_t attr;
+  posix_spawnattr_init(&attr);
+  sigset_t def;
+  sigemptyset(&def);
+  sigaddset(&def, SIGPIPE);
+  posix_spawnattr_setsigdefault(&attr, &def);
+  posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
+
+  std::vector<char*> args;
+  for (const auto& a : argv) args.push_back(const_cast<char*>(a.c_str()));
+  args.push_back(nullptr);
+  pid_t pid = -1;
+  int rc = posix_spawnp(&pid, argv[0].c_str(), &fa, &attr, args.data(), environ);
+  posix_spawn_file_actions_destroy(&fa);
+  posix_spawnattr_destroy(&attr);
+  if (rc != 0) throw std::runtime_error("failed to start " + argv[0] + ": " + std::strerror(rc));
+  int status = 0;
+  while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+  }
+  return decode_status(status);
+}
+
+RunResult run_capture_stdout(const std::vector<std::string>& argv) {
+  Pipe out;
+  int pid = spawn_child(argv, "", {}, 0, out.w, 2);  // stdin and stderr inherited, as in `$(…)`
+  close_fd(out.w);
+  RunResult res;
+  char buf[65536];
+  for (;;) {
+    ssize_t n = read(out.r, buf, sizeof buf);
+    if (n > 0) res.out.append(buf, static_cast<size_t>(n));
+    else if (n == 0 || errno != EINTR) break;
+  }
+  close_fd(out.r);
+  int status = 0;
+  while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+  }
+  res.code = decode_status(status);
+  return res;
+}
+
+std::optional<std::string> find_on_path(const std::string& name) {
+  const char* path = std::getenv("PATH");
+  if (!path) return std::nullopt;
+  std::string p = path;
+  size_t start = 0;
+  for (;;) {
+    size_t end = p.find(':', start);
+    std::string dir = p.substr(start, end == std::string::npos ? std::string::npos : end - start);
+    std::string cand = (dir.empty() ? std::string(".") : dir) + "/" + name;
+    struct stat st{};
+    if (stat(cand.c_str(), &st) == 0 && S_ISREG(st.st_mode) && access(cand.c_str(), X_OK) == 0) return cand;
+    if (end == std::string::npos) return std::nullopt;
+    start = end + 1;
+  }
 }
 
 std::string run_ok(const std::vector<std::string>& argv, const std::string& cwd) {

@@ -35,14 +35,16 @@ workspace-root/
 ├── AGENTS.md
 ├── CLAUDE.md
 │
-├── bin/
-│   ├── new-project
-│   ├── new-research
-│   ├── workspace-doctor
+├── bin/                  # wrappers around ws (tools/ws/README.md)
+│   ├── ws, orch
+│   ├── new-project, new-research, new-agent-case
+│   ├── workspace-context, workspace-doctor, link-skills
+│   ├── token-usage, session-report, selftest, export-oss
 │   ├── configure-firecrawl
 │   └── firecrawl-mcp-wrapper
 │
 ├── tools/
+│   ├── ws/               # the ws command-line tool (C++20; make -C tools/ws)
 │   └── local-research/
 │       ├── docker-compose.yml
 │       ├── bin/
@@ -141,6 +143,13 @@ This avoids maintaining separate instruction sets for Codex and Claude.
 ---
 
 ## 4. `bin/` — workspace commands
+
+Every command here (except the installers) is a short wrapper that runs `ws`, the
+workspace command-line tool in `tools/ws`. Build it once with `make -C tools/ws`;
+`tools/ws/README.md` maps each `bin/` name to its `ws` command, and
+`ws <command> --help` lists the options. Other commands not described below:
+`bin/workspace-context`, `bin/link-skills`, `bin/new-agent-case`, `bin/orch`,
+`bin/token-usage`, `bin/session-report`, `bin/selftest`, `bin/export-oss`.
 
 ### `bin/new-project`
 

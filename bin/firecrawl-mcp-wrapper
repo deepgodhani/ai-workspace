@@ -1,12 +1,3 @@
 #!/usr/bin/env bash
-set -euo pipefail
-secret_file="${XDG_CONFIG_HOME:-$HOME/.config}/ai-workspace/firecrawl.env"
-if [[ ! -r "$secret_file" ]]; then
-  echo "Missing Firecrawl credentials: $secret_file" >&2
-  echo "Run the workspace command: ./bin/configure-firecrawl" >&2
-  exit 1
-fi
-# shellcheck disable=SC1090
-source "$secret_file"
-: "${FIRECRAWL_API_KEY:?FIRECRAWL_API_KEY is missing from $secret_file}"
-exec npx -y firecrawl-mcp
+# Shortcut for `ws firecrawl mcp` (C++, tools/ws); Codex and Claude Code launch this path.
+d="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"; WS_ROOT="$(dirname "$d")" exec "$d/ws" firecrawl mcp "$@"

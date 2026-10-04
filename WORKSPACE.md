@@ -10,7 +10,7 @@ This directory is an organizer, not one large software repository.
 - `worktrees/` — temporary Git worktrees for parallel agents
 - `_shared/` — templates and reusable prompts
 - `tools/` — local infrastructure, including the credit-free research stack
-- `bin/` — workspace helper commands
+- `bin/` — workspace helper commands (wrappers around `ws`; build it with `make -C tools/ws`)
 
 ## Normal usage
 
