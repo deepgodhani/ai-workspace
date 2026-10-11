@@ -200,3 +200,80 @@ describe("ws session-report", () => {
     assert.match(h.out, /\n  --since SINCE\n  --clients CLIENTS\n$/);
   });
 });
+
+describe("ws session-check", () => {
+  const SC_HEADER = "  client session          msgs      tok/msg     cost$\n";
+  const SC_TRAILER = "Each turn re-reads the whole conversation; splitting these is the biggest token saving.\n";
+
+  test("default threshold 150: only the long session is flagged, exit 3", () => {
+    const r = ws(["session-check"]);
+    assert.deepEqual([r.code, r.err], [3, ""]);
+    assert.equal(
+      r.out,
+      "1 session at or above 150 messages — hand off and start a fresh chat:\n" +
+        SC_HEADER +
+        "  claude cccccccc-4444     250      485,000     38.94\n" +
+        SC_TRAILER,
+    );
+    assert.equal(npxArgs(), `${TOKSCALE} claude --group-by client,session,model --month`);
+  });
+
+  test("--threshold lowers the bar: merged sessions, sorted by messages desc, exit 3", () => {
+    const r = ws(["session-check", "--threshold", "10"]);
+    assert.equal(r.code, 3, r.err);
+    assert.equal(
+      r.out,
+      "3 sessions at or above 10 messages — hand off and start a fresh chat:\n" +
+        SC_HEADER +
+        "  claude cccccccc-4444     250      485,000     38.94\n" +
+        "   codex bbbbbbbb-3333      30        1,733      4.50\n" +
+        "  claude aaaaaaaa-1111-     17       58,882      2.50\n" +
+        SC_TRAILER,
+    );
+  });
+
+  test("nothing over the threshold: friendly message and exit 0", () => {
+    const r = ws(["session-check", "--threshold", "9999"]);
+    assert.deepEqual([r.code, r.err], [0, ""]);
+    assert.equal(r.out, "session-check: no sessions at or above 9999 messages. Nothing to hand off.\n");
+  });
+
+  test("--since/--clients pass through; empty --since means --month", () => {
+    ws(["session-check", "--since", "2026-09-01", "--clients", "claude,kiro"]);
+    assert.equal(npxArgs(), `${TOKSCALE} claude,kiro --group-by client,session,model --since 2026-09-01`);
+    const r = ws(["session-check", "--c", "kiro", "--th", "9999"]);
+    assert.equal(r.code, 0);
+    assert.equal(npxArgs(), `${TOKSCALE} kiro --group-by client,session,model --month`);
+  });
+
+  test("bad --threshold values exit 2 without running tokscale", () => {
+    for (const v of ["zero", "0", "-5"]) {
+      const r = ws(["session-check", "--threshold", v]);
+      assert.equal(r.code, 2, v);
+      assert.equal(r.out, "");
+      assert.match(r.err, /session-check: error: argument --threshold: expected a positive integer\n$/);
+    }
+    assert.equal(npxArgs(), null);
+  });
+
+  test("argument errors exit 2 with argparse-style messages; --help exits 0", () => {
+    const cases: [string[], string][] = [
+      [["--bogus"], "unrecognized arguments: --bogus"],
+      [["extra"], "unrecognized arguments: extra"],
+      [["--since"], "argument --since: expected one argument"],
+      [["--threshold"], "argument --threshold: expected one argument"],
+    ];
+    for (const [args, msg] of cases) {
+      const r = ws(["session-check", ...args]);
+      assert.equal(r.code, 2, args.join(" "));
+      assert.equal(r.out, "");
+      assert.match(r.err, /^usage: .*session-check \[-h\] \[--threshold N\] \[--since SINCE\] \[--clients CLIENTS\]\n/);
+      assert.ok(r.err.endsWith(`session-check: error: ${msg}\n`), r.err);
+    }
+    assert.equal(npxArgs(), null);
+    const h = ws(["session-check", "--help"]);
+    assert.equal(h.code, 0);
+    assert.match(h.out, /^usage: .*session-check \[-h\] \[--threshold N\]/);
+    assert.match(h.out, /\n  --threshold N      message count that triggers a warning \(default 150\)\n/);
+  });
+});

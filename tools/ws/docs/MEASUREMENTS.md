@@ -86,7 +86,7 @@ Kiro logs record no cache reads, so Kiro rows are not comparable with Claude row
 | Kiro 13be2bb6 (cont.) | link-skills, this plan (msgs 66–104) | 39 | 0.66M* | – | $2.68 |
 | Kiro 13be2bb6 (total) | read in the next session: 104 msgs, 1.40M, $5.64; later the same day it showed 108 msgs, 1.75M, $7.02, so the log was still growing | 108 | 1.75M* | – | $7.02 |
 
-| Kiro a34cdf85 (this session) | doctor, selftest, export-oss, usage, session-report, firecrawl | 113 so far (log lags; re-read after exit) | 0.71M* so far | – | $2.86 so far |
+| Kiro a34cdf85 | doctor, selftest, export-oss, usage, session-report, firecrawl, phase 4, installer, publish | 155 (read 2026-10-04 before exit; may grow slightly) | 1.48M* | – | $5.93 |
 
 *Kiro does not record cache reads.
 
@@ -122,8 +122,10 @@ longer drift apart. Needs the user's OK.
 ## 7. Phase 4 checklist (definition of done)
 
 - [x] Sections 2–4 have an "Actual" for every tool, installers included. 2026-10-04.
-- [ ] Section 5 has a row for every porting session (a34cdf85 still partial: Kiro's
-      log lags; re-read after exit), compared against the model.
+- [x] Section 5 has a row for every porting session. Against the model: phase 3 + 4
+      took 2 Kiro sessions, 263 messages, ~3.2M tokens*, ~$13 list price, versus the
+      ~$17–48 Claude-based estimate (*Kiro records no cache reads, so not comparable
+      token for token). 2026-10-04.
 - [x] Root `docs/MEASUREMENTS.md` §1a added with the `ws` results (user said "Go
       phase 4"). 2026-10-04.
 - [x] README (`_shared/oss/README.md`), HELP, WORKSPACE, `tools/ws/README.md` list
@@ -131,7 +133,9 @@ longer drift apart. Needs the user's OK.
 - [x] Fresh copy of the export (to /tmp): clean build with 0 warnings, 105/105 `ws`
       tests, `bin/selftest` 18/18, `bin/workspace-doctor` exit 0; no private names
       in the export. 2026-10-04.
-- [ ] Final export to `projects/ai-workspace` + push (only when the user asks).
+- [x] Final export to `projects/ai-workspace` + push: f6e78a2 (2026-10-04; a copy of
+      the export built with 0 warnings, 106/106 tests, selftest 18/18, and
+      `export-oss --check` clean from the copy).
 
 Fixed 2026-10-04: `bin/export-oss` failed in every clone because `_shared/oss/` was
 never exported; it is now (DECISIONS.md), and a test exports a clone again.

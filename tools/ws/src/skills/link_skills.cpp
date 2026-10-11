@@ -14,9 +14,10 @@ namespace ws {
 namespace {
 
 const char* LINK_SKILLS_USAGE =
-    "Usage: ws link-skills\n"
+    "Usage: ws link-skills [--kiro all|minimal]\n"
     "Links _shared/skills/* into ~/.claude/skills, ~/.agents/skills (absolute links)\n"
-    "and <workspace>/.kiro/skills (relative links). Existing entries are never replaced.\n";
+    "and <workspace>/.kiro/skills (relative links). --kiro minimal keeps only workspace-coach\n"
+    "for Kiro; all is the default. Existing non-workspace entries are never replaced.\n";
 
 // Skill folders in byte order, as the shell glob `*/` saw them: directories (or links to
 // directories) whose name does not start with a dot.
@@ -57,14 +58,26 @@ void link_into(const fs::path& src_root, const std::vector<std::string>& skills,
   }
 }
 
+bool managed_kiro_link(const fs::path& dest, const std::string& name) {
+  std::error_code ec;
+  return fs::is_symlink(fs::symlink_status(dest, ec)) && fs::read_symlink(dest, ec) == fs::path("../../_shared/skills") / name;
+}
+
 }  // namespace
 
 int cmd_link_skills(const std::vector<std::string>& args) {
-  // The script ignored its arguments; keep that, except for help.
-  for (const auto& a : args) {
-    if (a == "-h" || a == "--help") {
+  std::string kiro_mode = "all";
+  for (size_t i = 0; i < args.size(); ++i) {
+    if (args[i] == "-h" || args[i] == "--help") {
       std::cout << LINK_SKILLS_USAGE;
       return 0;
+    }
+    if (args[i] == "--kiro") {
+      if (++i == args.size() || (args[i] != "all" && args[i] != "minimal")) {
+        std::cerr << LINK_SKILLS_USAGE;
+        return 2;
+      }
+      kiro_mode = args[i];
     }
   }
   const char* home_env = std::getenv("HOME");
@@ -81,13 +94,19 @@ int cmd_link_skills(const std::vector<std::string>& args) {
     link_into(src_root, skills, home / ".claude/skills", "~/.claude/skills");  // Claude Code
     link_into(src_root, skills, home / ".agents/skills", "~/.agents/skills");  // Codex and AGENTS-style CLIs
 
-    // Kiro reads workspace-level skills; relative links keep the repo portable. Like the
-    // script, every skill folder is linked here (no SKILL.md check) and existing entries are
-    // left alone silently.
+    // Kiro reads workspace-level skills during session setup. In minimal mode, retain just
+    // the routing skill and remove only links we created; user-owned entries stay untouched.
     const fs::path kiro = workspace / ".kiro" / "skills";
     fs::create_directories(kiro);
     for (const auto& name : skills) {
       const fs::path dest = kiro / name;
+      if (kiro_mode == "minimal" && name != "workspace-coach") {
+        if (managed_kiro_link(dest, name)) {
+          fs::remove(dest);
+          std::cout << "unlink .kiro/skills/" << name << "\n";
+        }
+        continue;
+      }
       if (occupied(dest)) continue;
       fs::create_directory_symlink(fs::path("../../_shared/skills") / name, dest);
       std::cout << "link   .kiro/skills/" << name << "\n";

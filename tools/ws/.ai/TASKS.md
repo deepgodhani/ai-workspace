@@ -14,7 +14,7 @@
 - [x] Installers: setup-ai-workspace-full.sh → bootstrap over the export;
   init-ai-workspace.sh unchanged (separate scaffold). 2026-10-04.
 - [x] Phase 4: docs, root measurements, fresh-copy check. 2026-10-04.
-- [ ] Phase 4: export + push (only when the user asks).
+- [x] Phase 4: export + push (f6e78a2). 2026-10-04.
 - [x] `bin/export-oss` works in a clone (`_shared/oss/` exported). 2026-10-04.
 
 ## Done

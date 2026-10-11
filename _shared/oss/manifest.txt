@@ -15,6 +15,7 @@ bin/orch
 bin/new-project
 bin/new-research
 bin/selftest
+bin/session-check
 bin/session-report
 bin/token-usage
 bin/workspace-context

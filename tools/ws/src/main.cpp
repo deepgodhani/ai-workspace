@@ -21,6 +21,7 @@ const char* USAGE = R"(ws — AI Workspace command-line tool
   ws orch <command> …      scoped AI CLI child sessions (spawn, resume, merge, list, show, diff, close)
   ws selftest              end-to-end check of the framework on a throwaway copy
   ws session-report        does context per message grow with session length? (tokscale)
+  ws session-check         flag over-long active sessions and nudge a handoff (tokscale)
   ws usage                 local token and cost summary across AI CLIs (tokscale)
   ws version
 
@@ -45,6 +46,7 @@ int main(int argc, char** argv) {
       {"orch", ws::cmd_orch},
       {"selftest", ws::cmd_selftest},
       {"session-report", ws::cmd_session_report},
+      {"session-check", ws::cmd_session_check},
       {"usage", ws::cmd_usage},
       {"version", ws::cmd_version},
   };

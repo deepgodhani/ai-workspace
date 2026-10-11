@@ -51,3 +51,18 @@
 - Private script name removed from exported tools/ws files (tests use `bin/private-tool`).
 - Fresh copy (export to /tmp): 0 warnings, 105/105, selftest 18/18, doctor exit 0.
 - Not done: export to projects/ai-workspace and push (needs the user's ask).
+
+## Open parts completed (user: "yes, lets complete still open part")
+- export-oss: `_shared/oss/` exported verbatim so a clone can export (e903b3d).
+- Installer: setup-ai-workspace-full.sh → 209-line bootstrap over the export
+  (old file kept as .bak); init-ai-workspace.sh unchanged. Tested on throwaway
+  folders: fresh install + selftest 18/18, rerun 0 created, Git-URL source.
+- Published f6e78a2 (pushed; remote main = f6e78a2). A copy of the export: 0
+  warnings, 106/106, selftest 18/18, export-oss --check clean.
+- Session cost: a34cdf85 155 msgs, 1.48M tokens*, $5.93 (read before exit).
+
+## Handoff
+- STATE.md rewritten (stale test counts fixed: 106/106). Nothing required next;
+  optional follow-ups listed in STATE.md (sync export, cost row, .bak, C++ tests).
+- Temp helpers in /tmp/ws-old removed. Root-doc backups from before the phase 4
+  edits remain in /tmp/ws-phase4-backup (not needed; /tmp is cleared on reboot).

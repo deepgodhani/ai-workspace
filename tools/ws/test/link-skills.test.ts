@@ -79,6 +79,20 @@ describe("ws link-skills", () => {
     );
   });
 
+  test("--kiro minimal removes only managed Kiro links except workspace-coach", () => {
+    skill("workspace-coach");
+    linkSkills();
+    mkdirSync(join(ws, ".kiro/skills/custom"), { recursive: true });
+    const r = linkSkills(["--kiro", "minimal"]);
+    assert.equal(r.code, 0, r.err);
+    assert.match(r.out, /unlink \.kiro\/skills\/alpha/);
+    assert.match(r.out, /unlink \.kiro\/skills\/beta/);
+    assert.ok(!isLink(join(ws, ".kiro/skills/alpha")));
+    assert.ok(!isLink(join(ws, ".kiro/skills/beta")));
+    assert.ok(isLink(join(ws, ".kiro/skills/workspace-coach")));
+    assert.ok(lstatSync(join(ws, ".kiro/skills/custom")).isDirectory());
+  });
+
   test("never replaces existing entries: other link, dangling link, real folder, file", () => {
     mkdirSync(join(home, ".claude/skills"), { recursive: true });
     mkdirSync(join(home, ".agents/skills"), { recursive: true });
@@ -136,7 +150,14 @@ describe("ws link-skills", () => {
   test("--help exits 0 without linking", () => {
     const r = linkSkills(["--help"]);
     assert.equal(r.code, 0);
-    assert.match(r.out, /^Usage: ws link-skills\n/);
+    assert.match(r.out, /^Usage: ws link-skills \[--kiro all\|minimal\]\n/);
+    assert.ok(!existsSync(join(home, ".claude")));
+  });
+
+  test("rejects an invalid Kiro mode without linking", () => {
+    const r = linkSkills(["--kiro", "none"]);
+    assert.equal(r.code, 2);
+    assert.match(r.err, /^Usage: ws link-skills/);
     assert.ok(!existsSync(join(home, ".claude")));
   });
 });

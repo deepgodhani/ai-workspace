@@ -12,6 +12,7 @@ int cmd_new(const std::vector<std::string>& args);
 int cmd_orch(const std::vector<std::string>& args);
 int cmd_selftest(const std::vector<std::string>& args);
 int cmd_session_report(const std::vector<std::string>& args);
+int cmd_session_check(const std::vector<std::string>& args);
 int cmd_usage(const std::vector<std::string>& args);
 int cmd_version(const std::vector<std::string>& args);
 }  // namespace ws

@@ -533,6 +533,137 @@ int session_report_main(const std::vector<std::string>& args) {
   return 0;
 }
 
+// ---------------------------------------------------------------- ws session-check
+
+// A guardrail, not a report: flag active sessions long enough that each turn re-reads a
+// large accumulated context, and nudge a handoff → fresh chat. Reads the same tokscale
+// session grouping as session-report. Read-only.
+const char* SC_USAGE_LINE = "usage: ws session-check [-h] [--threshold N] [--since SINCE] [--clients CLIENTS]\n";
+const char* SC_HELP =
+    "usage: ws session-check [-h] [--threshold N] [--since SINCE] [--clients CLIENTS]\n"
+    "\n"
+    "Flag sessions whose message count is at or above --threshold (default 150), where\n"
+    "per-turn context re-reads dominate cost. Recommends handing off and starting a\n"
+    "fresh chat. Exit 0 when none exceed the threshold, 3 when one or more do.\n"
+    "\n"
+    "options:\n"
+    "  -h, --help         show this help message and exit\n"
+    "  --threshold N      message count that triggers a warning (default 150)\n"
+    "  --since SINCE\n"
+    "  --clients CLIENTS\n";
+
+[[noreturn]] void sc_usage_error(const std::string& msg) { fail(std::string(SC_USAGE_LINE) + "ws session-check: error: " + msg, 2); }
+
+int session_check_main(const std::vector<std::string>& args) {
+  std::optional<std::string> since, threshold_arg;
+  std::string clients = "claude";
+  std::vector<std::string> extras;
+  bool only_positional = false;
+  for (size_t i = 0; i < args.size(); ++i) {
+    const std::string& t = args[i];
+    if (only_positional || t.empty() || t[0] != '-' || t == "-" || looks_negative_number(t)) {
+      extras.push_back(t);
+      continue;
+    }
+    if (t == "--") {
+      only_positional = true;
+      continue;
+    }
+    if (t == "-h") {
+      std::cout << SC_HELP;
+      return 0;
+    }
+    const size_t eq = t.find('=');
+    const std::string name = t.substr(0, eq);
+    std::string full;
+    if (name.size() > 2 && name[1] == '-')
+      for (const char* opt : {"--help", "--threshold", "--since", "--clients"})  // unique prefixes are accepted
+        if (std::string(opt).compare(0, name.size(), name) == 0) full = opt;
+    if (full == "--help") {
+      if (eq != std::string::npos) sc_usage_error("argument -h/--help: ignored explicit argument '" + t.substr(eq + 1) + "'");
+      std::cout << SC_HELP;
+      return 0;
+    }
+    if (full.empty()) {
+      extras.push_back(t);
+      continue;
+    }
+    std::string value;
+    if (eq != std::string::npos) {
+      value = t.substr(eq + 1);
+    } else if (i + 1 < args.size() && (args[i + 1].empty() || args[i + 1][0] != '-' || args[i + 1] == "-" || looks_negative_number(args[i + 1]))) {
+      value = args[++i];
+    } else {
+      sc_usage_error("argument " + full + ": expected one argument");
+    }
+    if (full == "--threshold") threshold_arg = value;
+    else if (full == "--since") since = value;
+    else clients = value;
+  }
+  if (!extras.empty()) {
+    std::string s;
+    for (const auto& e : extras) s += (s.empty() ? "" : " ") + e;
+    sc_usage_error("unrecognized arguments: " + s);
+  }
+
+  long long threshold = 150;
+  if (threshold_arg) {
+    const auto n = py_int(*threshold_arg);
+    if (!n || *n < 1) sc_usage_error("argument --threshold: expected a positive integer");
+    threshold = *n;
+  }
+
+  std::vector<std::string> argv = tokscale_argv(TOKSCALE_PIN, clients, "client,session,model");
+  if (since && !since->empty()) argv.insert(argv.end(), {"--since", *since});
+  else argv.push_back("--month");
+  const json d = tokscale(argv, true);
+  const json& entries = key(d, "entries");
+  if (!entries.is_array()) fail("ws: tokscale output has no entry list");
+
+  struct Session {
+    std::string client, id;
+    Num msgs, tokens, cost{true, 0, 0.0};
+  };
+  std::vector<std::string> order;
+  std::map<std::string, Session> S;
+  for (const auto& x : entries) {
+    json sid = get(x, "sessionId", nullptr);
+    if (!truthy(sid)) sid = get(x, "session", nullptr);
+    const std::string k = sid.dump();
+    if (!S.count(k)) {
+      order.push_back(k);
+      S[k] = Session{py_str(key(x, "client")), truthy(sid) ? py_str(sid) : "", Num{}, Num{}, Num{true, 0, 0.0}};
+    }
+    Session& s = S[k];
+    s.msgs = add(s.msgs, num(get(x, "messageCount", 0), "messageCount"));
+    s.tokens = add(s.tokens, add(add(add(num(key(x, "input"), "input"), num(key(x, "output"), "output")), num(key(x, "cacheRead"), "cacheRead")),
+                                 num(key(x, "cacheWrite"), "cacheWrite")));
+    s.cost = add(s.cost, num(get(x, "cost", 0), "cost"));
+  }
+
+  std::vector<Session> over;
+  for (const auto& k : order)
+    if (S[k].msgs.d() >= static_cast<double>(threshold)) over.push_back(S[k]);
+  std::stable_sort(over.begin(), over.end(), [](const Session& a, const Session& b) { return a.msgs.d() > b.msgs.d(); });
+
+  if (over.empty()) {
+    std::cout << "session-check: no sessions at or above " << threshold << " messages. Nothing to hand off.\n";
+    return 0;
+  }
+
+  std::cout << over.size() << (over.size() == 1 ? " session" : " sessions") << " at or above " << threshold
+            << " messages — hand off and start a fresh chat:\n";
+  std::cout << rjust("client", 8) << " " << ljust("session", 14) << " " << rjust("msgs", 6) << " " << rjust("tok/msg", 12) << " "
+            << rjust("cost$", 9) << "\n";
+  for (const auto& s : over) {
+    const double per_msg = s.msgs.d() != 0 ? py_div(s.tokens, s.msgs) : 0;
+    std::cout << rjust(s.client, 8) << " " << ljust(head(s.id, 14), 14) << " " << rjust(py_num(s.msgs), 6) << " "
+              << rjust(py_fixed(std::trunc(per_msg), 0, true), 12) << " " << rjust(py_fixed(s.cost.d(), 2), 9) << "\n";
+  }
+  std::cout << "Each turn re-reads the whole conversation; splitting these is the biggest token saving.\n";
+  return 3;
+}
+
 int guarded(int (*fn)(const std::vector<std::string>&), const std::vector<std::string>& args) {
   try {
     return fn(args);
@@ -547,5 +678,6 @@ int guarded(int (*fn)(const std::vector<std::string>&), const std::vector<std::s
 
 int cmd_usage(const std::vector<std::string>& args) { return guarded(usage_main, args); }
 int cmd_session_report(const std::vector<std::string>& args) { return guarded(session_report_main, args); }
+int cmd_session_check(const std::vector<std::string>& args) { return guarded(session_check_main, args); }
 
 }  // namespace ws
