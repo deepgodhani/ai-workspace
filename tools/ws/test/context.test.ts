@@ -183,6 +183,25 @@ describe("ws context", () => {
     assert.deepEqual([r.code, r.err], [1, `Target not found: ${ws}/AGENTS.md\n`]);
   });
 
+  test("a project listed in external-projects.txt resolves by name and path, with the workspace contract first", () => {
+    mkdirSync(join(outside, "sub"), { recursive: true });
+    writeFileSync(join(outside, "AGENTS.md"), "# ext\n");
+    writeFileSync(join(ws, "external-projects.txt"), `ext ${outside}\n`);
+    try {
+      const r = context(["ext"]);
+      assert.equal(r.code, 0, r.err);
+      assert.match(r.out, /^target: @ext\ntype: external-project\nwrite_scope: @ext$/m);
+      assert.match(r.out, new RegExp(`instructions:\\n  - AGENTS\\.md\\n  - ${outside}/AGENTS\\.md\\nrequired_context:`));
+      assert.match(context([join(outside, "sub")]).out, /^target: @ext\/sub$/m);
+      assert.match(context(["@ext/sub"]).out, /^target: @ext\/sub$/m);
+      assert.match(context(["escape"]).out, /^target: @ext$/m); // the symlink now points at a listed project
+    } finally {
+      rmSync(join(ws, "external-projects.txt"), { force: true });
+      rmSync(join(outside, "AGENTS.md"), { force: true });
+      rmSync(join(outside, "sub"), { recursive: true, force: true });
+    }
+  });
+
   test("wrong arguments exit 2 with usage; --help exits 0", () => {
     for (const args of [[], ["a", "b"], [""], ["/"]]) {
       const r = context(args);

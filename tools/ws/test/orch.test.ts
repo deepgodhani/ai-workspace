@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { after, before, describe, test } from "node:test";
@@ -213,6 +213,82 @@ describe("resume and registry", () => {
   test("rejects the workspace root and paths outside it", () => {
     assert.match(orch(["spawn", ".", "--task", "x"]).err, /inside the workspace/);
     assert.match(orch(["spawn", tmpdir(), "--task", "x"]).err, /inside the workspace/);
+  });
+});
+
+describe("external projects", () => {
+  let ext: string;
+  let unlisted: string;
+  const registry = () => join(ws, "external-projects.txt");
+
+  before(() => {
+    ext = realpathSync(mkdtempSync(join(tmpdir(), "orch-ext-")));
+    unlisted = realpathSync(mkdtempSync(join(tmpdir(), "orch-unlisted-")));
+    mkdirSync(join(ext, "ingestion"));
+    writeFileSync(join(ext, "AGENTS.md"), "# ext repo\n");
+    writeFileSync(join(ext, "ingestion", "extract.py"), "print(1)\n");
+    git(ext, "init", "-q", "-b", "main");
+    git(ext, "-c", "user.email=t@example.com", "-c", "user.name=t", "add", "-A");
+    git(ext, "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "-m", "init");
+    writeFileSync(registry(), `# external repos\nextrepo ${ext}   # the real one\nmissing /nonexistent/path/for/orch-test\n\n`);
+    symlinkSync(unlisted, join(ws, "projects", "sneaky"));
+  });
+
+  after(() => {
+    rmSync(registry(), { force: true });
+    rmSync(join(ws, "projects", "sneaky"), { force: true });
+    rmSync(ext, { recursive: true, force: true });
+    rmSync(unlisted, { recursive: true, force: true });
+  });
+
+  test("resolves by name, @name/sub and absolute path; the label is @name", () => {
+    assert.match(dryRunPacket(["extrepo", "--task", "x"]), new RegExp("Target: `@extrepo` \\(working directory: `" + ext + "`\\)"));
+    assert.match(dryRunPacket(["@extrepo/ingestion", "--task", "x"]), /Target: `@extrepo\/ingestion`/);
+    const r = orch(["spawn", join(ext, "ingestion"), "--task", "Read it"]);
+    assert.equal(r.code, 0, r.err + r.out);
+    assert.equal(lastCall().cwd, join(ext, "ingestion"));
+    assert.equal(JSON.parse(orch(["show", idOf(r.out)]).out).target, "@extrepo/ingestion");
+  });
+
+  test("--write puts the worktree under the workspace and leaves the repo checkout untouched", () => {
+    const r = orch(["spawn", "extrepo", "--write", "--task", "Add file"]);
+    assert.equal(r.code, 0, r.err + r.out);
+    const id = idOf(r.out);
+    const show = JSON.parse(orch(["show", id]).out);
+    assert.ok(show.worktree.startsWith(join(ws, "worktrees")), show.worktree);
+    assert.ok(existsSync(join(show.worktree, "FAKE_EDIT.txt")));
+    assert.equal(git(ext, "status", "--porcelain"), "");
+    assert.equal(orch(["close", id, "--force", "--delete-branch"]).code, 0);
+    assert.equal(git(ext, "branch", "--list", `orch/${id}`), "");
+  });
+
+  test("unlisted folders stay refused, including through a symlink and ../ escapes", () => {
+    for (const t of [unlisted, "projects/sneaky", "extrepo/../" + unlisted.split("/").at(-1), "missing"]) {
+      const r = orch(["spawn", t, "--task", "x"]);
+      assert.equal(r.code, 2, `${t}: ${r.out}`);
+      assert.match(r.err, /inside the workspace .*external-projects\.txt|no such directory/, t);
+    }
+  });
+
+  test("too-broad or malformed registry entries are errors", () => {
+    const saved = readFileSync(registry(), "utf8");
+    try {
+      for (const [line, msg] of [
+        [`up ${tmpdir()}`, /contains the workspace/],
+        [`home ~`, /home directory itself/],
+        [`inner ${join(ws, "projects")}`, /already inside the workspace/],
+        [`bad name ${ext}`, /expected `<name> <path>`/],
+        [`rel some/dir`, /must be absolute/],
+        [`extrepo ${ext}\nextrepo ${ext}`, /duplicate name/],
+      ] as const) {
+        writeFileSync(registry(), line + "\n");
+        const r = orch(["spawn", "extrepo", "--task", "x", "--dry-run"]);
+        assert.equal(r.code, 2, line);
+        assert.match(r.err, msg, line);
+      }
+    } finally {
+      writeFileSync(registry(), saved);
+    }
   });
 });
 

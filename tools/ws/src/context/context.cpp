@@ -6,11 +6,13 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "commands.hpp"
+#include "util/external.hpp"
 #include "util/fs.hpp"
 #include "util/proc.hpp"
 
@@ -83,6 +85,14 @@ int cmd_context(const std::vector<std::string>& args) {
     }
   }
   if (matches.empty()) {
+    try {
+      if (auto ext = lookup_external(workspace, requested); ext && fs::is_directory(*ext, ec)) matches.push_back(ext->string());
+    } catch (const std::runtime_error& e) {
+      std::cerr << e.what() << "\n";
+      return 1;
+    }
+  }
+  if (matches.empty()) {
     std::cerr << "Target not found: " << requested << "\n";
     return 1;
   }
@@ -93,13 +103,26 @@ int cmd_context(const std::vector<std::string>& args) {
   }
 
   const std::string target = fs::canonical(matches[0]).string();
-  if (!starts_with(target + "/", ws_str + "/")) {
-    std::cerr << "Target is outside the workspace: " << target << "\n";
-    return 1;
-  }
   const std::string prefix = ws_str + "/";
-  const std::string relative = target == ws_str ? "." : strip_prefix(target, prefix);
-  const std::string type = target_type(relative);
+  std::string relative, type;
+  std::optional<ExternalMatch> external;
+  if (starts_with(target + "/", prefix)) {
+    relative = target == ws_str ? "." : strip_prefix(target, prefix);
+    type = target_type(relative);
+  } else {
+    try {
+      external = match_external(workspace, target);
+    } catch (const std::runtime_error& e) {
+      std::cerr << e.what() << "\n";
+      return 1;
+    }
+    if (!external) {
+      std::cerr << "Target is outside the workspace: " << target << "\n";
+      return 1;
+    }
+    relative = external->label;
+    type = "external-project";
+  }
 
   // Git state of the owning repository, if any.
   std::string git_relative = "none", branch = "none", changed = "0";
@@ -130,13 +153,16 @@ int cmd_context(const std::vector<std::string>& args) {
             << "git_branch: " << branch << "\n"
             << "git_changed_paths: " << changed << "\n";
 
-  // AGENTS.md files from the workspace root down to the target.
+  // AGENTS.md files from the workspace root down to the target. For an external
+  // project: the workspace contract, then the repo's own files from its root down.
   std::cout << "instructions:\n";
   std::vector<std::string> instructions;
+  const std::string stop = external ? external->project.root.string() : ws_str;
   for (fs::path current = target;; current = current.parent_path()) {
     if (fs::is_regular_file(current / "AGENTS.md", ec)) instructions.push_back((current / "AGENTS.md").string());
-    if (current.string() == ws_str || current == current.root_path()) break;
+    if (current.string() == stop || current == current.root_path()) break;
   }
+  if (external && fs::is_regular_file(workspace / "AGENTS.md", ec)) instructions.push_back((workspace / "AGENTS.md").string());
   for (auto it = instructions.rbegin(); it != instructions.rend(); ++it)
     std::cout << "  - " << strip_prefix(*it, prefix) << "\n";
 
