@@ -38,6 +38,11 @@ one application or Git repository.
   worktrees without explicit authorization.
 - Use `bin/workspace-context <target>` to resolve instructions, startup paths,
   context size, and owning Git repository without loading file contents.
+- Work that belongs in a repository's own session: run it with
+  `bin/orch spawn <target> --task "…"` (`--write` for edits in a worktree,
+  `--full` for the repo's own skills and slash commands) and use the returned
+  result. It blocks until the child finishes, so run long tasks in the
+  background. Do not draft a prompt for the user to paste into another session.
 
 ## Reusable agents
 
