@@ -12,6 +12,7 @@
 #include "orch/sandbox.hpp"
 #include "orch/worktree.hpp"
 #include "util/args.hpp"
+#include "util/external.hpp"
 #include "util/fs.hpp"
 #include "util/proc.hpp"
 
@@ -34,6 +35,8 @@ const char* USAGE = R"(orch — start scoped AI CLI child sessions with a compac
   orch close <id> [--force] [--delete-branch]
 
 --task - reads the task from stdin. Default --cli claude, read-only, --timeout 1800.
+<target> is a workspace folder (projects/x) or an external repo listed in
+<workspace>/external-projects.txt, by name (my-repo, my-repo/sub) or absolute path.
 Claude children start lean (no skills, no MCP servers, cache-friendly prompt); --full keeps them.
 --sandbox auto (default): Claude/Codex use their native sandbox, Kiro runs inside srt.)";
 
@@ -84,15 +87,24 @@ struct Target {
   std::string abs, rel;
 };
 
+// A target is a folder inside the workspace (shown workspace-relative) or inside a
+// project listed in external-projects.txt (shown as @name[/sub]). Symlinks are
+// resolved first, so a link cannot smuggle in an unlisted folder.
 Target resolve_target(const fs::path& ws, const std::string& input) {
   fs::path p = fs::path(input).is_absolute() ? fs::path(input) : ws / input;
-  if (!fs::exists(p)) throw std::runtime_error("no such directory: " + input);
+  if (!fs::exists(p)) {
+    auto ext = lookup_external(ws, input);
+    if (!ext) throw std::runtime_error("no such directory: " + input);
+    p = *ext;
+  }
   fs::path abs = fs::canonical(p);
   if (!fs::is_directory(abs)) throw std::runtime_error("target is not a directory: " + input);
   fs::path rel = abs.lexically_relative(ws);
-  if (rel.empty() || rel == "." || *rel.begin() == "..")
-    throw std::runtime_error("target must be a folder inside the workspace (" + ws.string() + "), not the root or outside it: " + input);
-  return {abs.string(), rel.string()};
+  if (!rel.empty() && rel != "." && *rel.begin() != "..") return {abs.string(), rel.string()};
+  if (rel != ".")
+    if (auto m = match_external(ws, abs)) return {abs.string(), m->label};
+  throw std::runtime_error("target must be a folder inside the workspace (" + ws.string() + ") or inside a project listed in " +
+                           (ws / EXTERNAL_PROJECTS_FILE).string() + ", not the root or outside it: " + input);
 }
 
 std::string git_snapshot(const std::string& root) {

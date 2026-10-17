@@ -59,6 +59,16 @@ workspace root as a repository.
 Long conversations still accumulate tokens. After a handoff, start a fresh
 conversation at `~/Workspace`; changing folders is unnecessary.
 
+## External projects
+
+Repositories that live elsewhere (e.g. `~/code/my-service`) stay where they
+are and are listed in `external-projects.txt`, one `<name> <path>` per line.
+`bin/workspace-context <name>` and `bin/orch spawn <name> --task "…"` then treat
+them like any project: the workspace `AGENTS.md` applies first, then the repo's
+own. `--write` children get a worktree under `worktrees/`, never the repo's own
+checkout. Unlisted outside folders, the home directory, and anything containing
+the workspace are refused.
+
 ## Session continuity
 
 Every project uses:

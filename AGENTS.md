@@ -18,7 +18,8 @@ one application or Git repository.
 ## Locations
 
 - Reusable workflows and cases: `agents/`
-- Application repositories: `projects/`
+- Application repositories: `projects/`, or outside the workspace when listed
+  in `external-projects.txt` (`<name> <path>`; target them as `<name>` or `@name/sub`)
 - Research topics: `research/topics/`
 - Durable verified knowledge: `knowledge/`
 - Shared skills/templates: `_shared/`
